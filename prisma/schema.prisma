@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  username      String   @unique
+  passwordHash  String
+  mustChangePwd Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  url         String
+  method      String   @default("GET")
+  timeout     Int      @default(30000)
+  interval    Int      @default(60)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  checks      CheckHistory[]
+  incidents   Incident[]
+
+  @@map("services")
+}
+
+model CheckHistory {
+  id         String   @id @default(cuid())
+  serviceId  String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  checkedAt  DateTime @default(now())
+  status     String   @default("up")
+  statusCode Int?
+  latency    Int?
+  error      String?  @db.Text
+  duration   Int?
+  createdAt  DateTime @default(now())
+
+  @@index([serviceId])
+  @@index([checkedAt])
+  @@map("check_history")
+}
+
+model Incident {
+  id          String    @id @default(cuid())
+  serviceId   String
+  service     Service   @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  title       String
+  description String?   @db.Text
+  startedAt   DateTime  @default(now())
+  endedAt     DateTime?
+  duration    Int?
+  status      String    @default("investigating")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([serviceId])
+  @@index([status])
+  @@index([startedAt])
+  @@map("incidents")
+}
+
+model Maintenance {
+  id          String    @id @default(cuid())
+  title       String
+  description String?   @db.Text
+  startsAt    DateTime
+  endsAt      DateTime?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active])
+  @@index([startsAt])
+  @@map("maintenance")
+}
+
+model DailyStats {
+  id               String   @id @default(cuid())
+  serviceId        String
+  date             String
+  uptime           Float    @default(0)
+  downtime         Float    @default(0)
+  availability     Float    @default(0)
+  avgResponseTime  Float    @default(0)
+  totalChecks      Int      @default(0)
+  totalFailures    Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([serviceId, date])
+  @@index([serviceId])
+  @@index([date])
+  @@map("daily_stats")
+}
